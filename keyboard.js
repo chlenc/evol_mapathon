@@ -10,10 +10,19 @@ module.exports = {
         }
     },
     home: {
-        // parse_mode: 'HTML',
         reply_markup: {
             keyboard: [
                 [kb.home.report],
+                [kb.home.about_me],
+                [kb.home.rules]
+            ]
+        }
+    },home_HTML: {
+        parse_mode: 'HTML',
+        reply_markup: {
+            keyboard: [
+                [kb.home.report],
+                [kb.home.about_me],
                 [kb.home.rules]
             ]
         }

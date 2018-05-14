@@ -7,7 +7,8 @@ module.exports = {
     },
     home:{
         report:'Написать отчет 📝',
-        rules: 'Правила 📜'
+        rules: 'Правила 📜',
+        about_me:'Написать сообщение о себе 🎫'
     },
     cancel_report: {
         text: 'Отменить ❌',
