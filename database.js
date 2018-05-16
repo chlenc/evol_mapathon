@@ -1,7 +1,9 @@
 const firebase = require("firebase");
 firebase.initializeApp({
-    serviceAccount: "./astrobot-ec2b77a96a64.json",
-    databaseURL: "https://astrobot-26975.firebaseio.com/"
+    serviceAccount: "./test-ea05e207390d.json",
+    databaseURL: "https://test-dae5b.firebaseio.com/"
+    // serviceAccount: "./astrobot-ec2b77a96a64.json",
+    // databaseURL: "https://astrobot-26975.firebaseio.com/"
 })
 
 module.exports = {

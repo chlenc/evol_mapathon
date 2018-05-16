@@ -1,5 +1,5 @@
 const TelegramBot = require('node-telegram-bot-api');
-const token = '567329102:AAGnlg2pk3QrOyb9Gd5HLY2KDtO2h6V5wPU';
+const token = /*'459914749:AAE38mka1v9hyxYk1l2aihXBN05lRlM0Oi8'*/'567329102:AAGnlg2pk3QrOyb9Gd5HLY2KDtO2h6V5wPU';
 const bot = new TelegramBot(token, {polling: true});
 const helpers = require('./helpers');
 const keyboards = require('./keyboard');
@@ -18,26 +18,14 @@ const casheMessages = new TelegramCacheChatMessages({
 bot.onText(/\/start/, (msg) => {
     delete msg.chat.type;
     msg.chat.state = 'week1';
+    msg.chat.start_date = helpers.convert_date(new Date());
     database.updateData('users/' + msg.chat.id, msg.chat);
-    database.setData('archive/' + msg.chat.id, {
-        'start': '',
-        'week1': '',
-        'week2': '',
-        'week3': '',
-        'week4': '',
-        'team_salute': ''
-    });
+    database.setData('archive/' + msg.chat.id, {start_date: msg.chat.start_date})
     bot.sendMessage(msg.chat.id, frases.start(msg.chat.first_name), keyboards.home).then(() => {
+        bot.sendMessage(msg.chat.id, frases.rules, keyboards.home);
         database.getData('tasks/start/task', function (task, error) {
             if (!error) {
-                bot.sendMessage(msg.chat.id, task, keyboards.home).then(dat => {
-                    setTimeout(function () {
-                        bot.sendMessage(msg.chat.id, frases.team_ask(msg.chat.first_name), keyboards.team_ready)
-                        setTimeout(function () {
-                            bot.sendMessage(msg.chat.id, frases.start_marathon(msg.chat.first_name))
-                        }, 300000)
-                    }, 10000)
-                })
+                bot.sendMessage(msg.chat.id, task, keyboards.home)
             }
         })
 
@@ -49,6 +37,10 @@ bot.onText(/\/help/, msg => {
 })
 
 bot.onText(/\/test/, msg => {
+    // console.log(helpers.convert_date(new Date()))
+    //
+    // console.log(helpers.getState('2018-05-15'))
+    //
     // database.getData('users',users=>{
     //     for(var temp in users){
     //         database.setData('archive/'+temp,{
@@ -81,35 +73,38 @@ bot.onText(/\/next/, msg => {
         if (!error) {
             for (var temp in data.users) {
                 var state = data.users[temp].state;
-
+                state = helpers.getState(data.users[temp].start_date, state);
+                var diff = Math.floor((new Date().getTime() - new Date(data.users[temp].start_date).getTime() ) / 1000 / 60 / 60 / 24);
                 data.users[temp].report = (data.users[temp].report === undefined) ? '' : data.users[temp].report;
-                data.archive[temp][frases.week_map[frases.week_map.indexOf(state) - 1]] = data.users[temp].report;
+                data.archive[temp][helpers.convert_date(new Date())] = {
+                    type: helpers.getState(data.users[temp].start_date, state, true),
+                    report: data.users[temp].report
+                };
 
                 if (state === 'week1' || state === 'week2' || state === 'week3' || state === 'week4') {
-                    if (state !== 'week4' && (data.users[temp].report === '' || data.users[temp].report === undefined)) {
+                    if (diff !== 0 && state !== 'week4' && (data.users[temp].report === '' || data.users[temp].report === undefined)) {
                         if (data.users[temp].rebuke) {
                             bot.sendMessage(temp, frases.excluded(data.users[temp].first_name));
                             try {
-                                delete data.users[temp].rebuke;
-                                if(data.users[temp].team !== undefined && data.users[temp].team !== null){
+                                //delete data.users[temp].rebuke;
+                                if (data.users[temp].team !== undefined && data.users[temp].team !== null) {
                                     delete data.groups[data.users[temp].team][temp];
                                     delete data.users[temp].team;
                                 }
-                            }catch(e){
+                            } catch (e) {
                                 console.log(e.toString())
                             }
                             data.users[temp].state = 'disabled';
-                            continue
+                            continue;
                         } else {
                             bot.sendMessage(temp, frases.rebuke(data.users[temp].first_name));
                             data.users[temp].rebuke = true;
                         }
                     }
                     if (data.users[temp].state !== 'disabled') {
-                        var week = frases.week_map[frases.week_map.indexOf(state) + 1];
-                        if (week === '')
+                        if (state === 'week4')
                             delete data.users[temp].rebuke;
-                        data.users[temp].state = week;
+                        data.users[temp].state = state;
                         data.users[temp].report = '';
                         bot.sendMessage(temp, data.tasks[state].task);
                     }
@@ -119,16 +114,22 @@ bot.onText(/\/next/, msg => {
                         delete data.users[temp].team;
                         bot.sendMessage(temp, frases.team_ask(data.users[temp].first_name), keyboards.team_ready)
                     }
+                    if (diff === 0) {
+                        bot.sendMessage(temp, frases.team_ask(msg.chat.first_name), keyboards.team_ready);
+                        bot.sendMessage(temp, frases.start_marathon(msg.chat.first_name));
+                    }
                 }
-                else if (state === 'disabled') {
-                    bot.sendMessage(temp, 'Напишите /start чтобы начать заново', {
-                        reply_markup: {
-                            remove_keyboard: true
-                        }
-                    })
-                }
+                // else if (state === 'disabled') {
+                //     // bot.sendMessage(temp, 'Напишите /start чтобы начать заново', {
+                //     //     reply_markup: {
+                //     //         remove_keyboard: true
+                //     //     }
+                //     // })
+                // }
             }
-            database.setData('/', data)
+
+            database.setData('/', data);
+            database.updateData('users/' + temp + '/', {start_date: helpers.convert_date(new Date(data.users[temp].start_date), -1)});
         }
     })
     // console.log((new Date().getTime() - s) / 1000 + ' ns')
@@ -136,10 +137,10 @@ bot.onText(/\/next/, msg => {
 
 bot.on('message', function (msg) {
     var chatId = msg.chat.id;
-    if (msg.text === kb.home.report ) {
+    if (msg.text === kb.home.report) {
         bot.sendMessage(chatId, frases.report, keyboards.cancel_report)
     }
-    else if ( msg.text === kb.home.about_me) {
+    else if (msg.text === kb.home.about_me) {
         bot.sendMessage(chatId, frases.about_me, keyboards.cancel_report)
     }
     else if (msg.text === kb.home.rules) {
@@ -205,7 +206,7 @@ bot.on('callback_query', query => {
                         // };
 
                         var isJoin = false;
-                        database.getData('archive/',archive=>{
+                        database.getData('archive/', archive => {
                             for (var temp in groups) {
                                 if (groups[temp].isNotFull) {
                                     groups[temp][chat.id] = chat;
@@ -221,9 +222,9 @@ bot.on('callback_query', query => {
 
                                     for (var grout_user in groups[temp]) {
                                         if (grout_user !== 'isNotFull') {
-                                            var team_salute = (archive[grout_user].team_salute === '')?'Нет данных :c':archive[grout_user].team_salute;
-                                            grout_users += `\n${count_grout_users}. ` + frases.user_link(grout_user, groups[temp][grout_user].first_name)+
-                                                ':\n'+team_salute+'\n';
+                                            var team_salute = (archive[grout_user].team_salute === '') ? 'Нет данных :c' : archive[grout_user].team_salute;
+                                            grout_users += `\n${count_grout_users}. ` + frases.user_link(grout_user, groups[temp][grout_user].first_name) +
+                                                ':\n' + team_salute + '\n';
                                             count_grout_users++
                                         }
                                     }
@@ -269,49 +270,6 @@ bot.on('callback_query', query => {
         })
     }
 
-
-    // try {
-    //     // console.log(JSON.parse(query.data).timeout)
-    //     switch (query.data) {//(JSON.parse(query.data).type) {
-    //         case kb.more.plan.callback_data:
-    //             bot.sendMessage(chat.id, frases.plan, keyboards.more)//, keyboards.getMoreKeyboard(JSON.parse(query.data).back));
-    //             break;
-    //
-    //         case kb.more.aboutTime.callback_data:
-    //             bot.sendMessage(chat.id, frases.aboutTime, keyboards.more)//, keyboards.getMoreKeyboard(JSON.parse(query.data).back));
-    //             break;
-    //
-    //         case kb.more.aboutHelp.callback_data:
-    //             bot.sendMessage(chat.id, frases.aboutHelp, keyboards.more)//, keyboards.getMoreKeyboard(JSON.parse(query.data).back));
-    //             break;
-    //
-    //         case kb.more.difference.callback_data:
-    //             bot.sendMessage(chat.id, frases.difference, keyboards.more)//, keyboards.getMoreKeyboard(JSON.parse(query.data).back));
-    //             break;
-    //
-    //     }
-    // } catch (e) {
-    // }
-
-    // bot.deleteMessage(chat.id, message_id).catch(function () {
-    //     console.log('delete error')
-    // });
 });
 
 console.log('bot has been started');
-
-/*
-* if (msg.length >= 3000) {
-                            bot.sendMessage(chat.id, msg, {
-                                parse_mode: 'HTML',
-                                reply_markup: {
-                                    inline_keyboard: [
-                                        [kb.back_to_categories, kb.back_to_home]
-                                    ]
-                                }
-                            })
-                            msg = '\n'
-                        } else {
-                            msg += `<b>${values[i].title}</b> <a>\nЦена: ${values[i].price}₽\nНажмите сюда👉 /g${values[i].id}</a>\n\n`;
-                        }
-* */

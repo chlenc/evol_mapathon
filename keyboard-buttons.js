@@ -2,7 +2,7 @@ const frases = require('./frases')
 
 module.exports = {
     team_ready_yes: {
-        text: 'Да',
+        text: 'Вступить в группу',
         callback_data: 'team_ready_yes'
     },
     home:{
