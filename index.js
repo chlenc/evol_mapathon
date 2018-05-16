@@ -1,5 +1,5 @@
 const TelegramBot = require('node-telegram-bot-api');
-const token = /*'459914749:AAE38mka1v9hyxYk1l2aihXBN05lRlM0Oi8'*/'567329102:AAGnlg2pk3QrOyb9Gd5HLY2KDtO2h6V5wPU';
+const token = '567329102:AAGnlg2pk3QrOyb9Gd5HLY2KDtO2h6V5wPU';
 const bot = new TelegramBot(token, {polling: true});
 const helpers = require('./helpers');
 const keyboards = require('./keyboard');
@@ -16,20 +16,26 @@ const casheMessages = new TelegramCacheChatMessages({
 });
 
 bot.onText(/\/start/, (msg) => {
-    delete msg.chat.type;
-    msg.chat.state = 'week1';
-    msg.chat.start_date = helpers.convert_date(new Date());
-    database.updateData('users/' + msg.chat.id, msg.chat);
-    database.setData('archive/' + msg.chat.id, {start_date: msg.chat.start_date})
-    bot.sendMessage(msg.chat.id, frases.start(msg.chat.first_name), keyboards.home).then(() => {
-        bot.sendMessage(msg.chat.id, frases.rules, keyboards.home);
-        database.getData('tasks/start/task', function (task, error) {
-            if (!error) {
-                bot.sendMessage(msg.chat.id, task, keyboards.home)
-            }
-        })
+    database.getData('users/' + msg.chat.id, function (data, error) {
+        if (error || data.state !== 'disabled') {
+            delete msg.chat.type;
+            msg.chat.state = 'week1';
+            msg.chat.start_date = helpers.convert_date(new Date());
+            database.updateData('users/' + msg.chat.id, msg.chat);
+            database.setData('archive/' + msg.chat.id, {start_date: msg.chat.start_date})
+            bot.sendMessage(msg.chat.id, frases.start(msg.chat.first_name), keyboards.home).then(() => {
+                bot.sendMessage(msg.chat.id, frases.rules, keyboards.home);
+                database.getData('tasks/start/task', function (task, error) {
+                    if (!error) {
+                        bot.sendMessage(msg.chat.id, task, keyboards.home)
+                    }
+                })
 
-    });
+            });
+        }else{
+            bot.sendMessage(msg.chat.id,'Вы исключены из марафона')
+        }
+    })
 });
 
 bot.onText(/\/help/, msg => {
@@ -67,14 +73,19 @@ bot.onText(/\/test/, msg => {
     // })
 
 })
-bot.onText(/\/next/, msg => {
-    // var s = new Date().getTime()
+
+const rule = new schedule.RecurrenceRule();
+rule.dayOfWeek = 1;
+rule.hour = 8;
+rule.minute = 1;
+
+schedule.scheduleJob(rule, function(){
     database.getData('/', function (data, error) {
         if (!error) {
             for (var temp in data.users) {
                 var state = data.users[temp].state;
                 state = helpers.getState(data.users[temp].start_date, state);
-                var diff = Math.floor((new Date().getTime() - new Date(data.users[temp].start_date).getTime() ) / 1000 / 60 / 60 / 24);
+                var diff = Math.floor((new Date().getTime() - new Date(data.users[temp].start_date).getTime()) / 1000 / 60 / 60 / 24);
                 data.users[temp].report = (data.users[temp].report === undefined) ? '' : data.users[temp].report;
                 data.archive[temp][helpers.convert_date(new Date())] = {
                     type: helpers.getState(data.users[temp].start_date, state, true),
@@ -115,8 +126,8 @@ bot.onText(/\/next/, msg => {
                         bot.sendMessage(temp, frases.team_ask(data.users[temp].first_name), keyboards.team_ready)
                     }
                     if (diff === 0) {
-                        bot.sendMessage(temp, frases.team_ask(msg.chat.first_name), keyboards.team_ready);
-                        bot.sendMessage(temp, frases.start_marathon(msg.chat.first_name));
+                        bot.sendMessage(temp, frases.team_ask(data.users[temp].first_name), keyboards.team_ready);
+                        bot.sendMessage(temp, frases.start_marathon(data.users[temp].first_name));
                     }
                 }
                 // else if (state === 'disabled') {
@@ -132,6 +143,11 @@ bot.onText(/\/next/, msg => {
             database.updateData('users/' + temp + '/', {start_date: helpers.convert_date(new Date(data.users[temp].start_date), -1)});
         }
     })
+});
+
+bot.onText(/\/next/, msg => {
+    // var s = new Date().getTime()
+
     // console.log((new Date().getTime() - s) / 1000 + ' ns')
 })
 
