@@ -75,7 +75,6 @@ bot.onText(/\/test/, msg => {
 })
 
 const rule = new schedule.RecurrenceRule();
-rule.dayOfWeek = 1;
 rule.hour = 8;
 rule.minute = 1;
 
@@ -140,7 +139,7 @@ schedule.scheduleJob(rule, function(){
             }
 
             database.setData('/', data);
-            database.updateData('users/' + temp + '/', {start_date: helpers.convert_date(new Date(data.users[temp].start_date), -1)});
+            //database.updateData('users/' + temp + '/', {start_date: helpers.convert_date(new Date(data.users[temp].start_date), -1)});
         }
     })
 });
