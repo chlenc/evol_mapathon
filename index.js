@@ -184,6 +184,7 @@ bot.on('message', function (msg) {
         var messages = casheMessages.messages(chatId);
         var lastMessage = messages[messages.length - 2];
         var isReport = false;
+        var isAboutMe = false;
         if (lastMessage !== undefined && lastMessage.text === kb.home.report && msg.text !== 'Отменить ❌') {
             database.updateData('users/' + chatId, {report: msg.text});
             bot.sendMessage(chatId, frases.success_report, keyboards.home);
@@ -192,7 +193,7 @@ bot.on('message', function (msg) {
         if (lastMessage !== undefined && lastMessage.text === kb.home.about_me && msg.text !== 'Отменить ❌') {
             database.updateData('archive/' + chatId, {team_salute: msg.text});
             bot.sendMessage(chatId, frases.success_about_me, keyboards.home);
-            isReport = true;
+            isAboutMe = true;
         }
         if (msg.text.slice(0, 1) !== '/') {
             database.getData('users/' + chatId, function (user, error) {
@@ -200,6 +201,8 @@ bot.on('message', function (msg) {
                     database.getData('groups/' + user.team, team => {
                         if (isReport) {
                             msg.text = '<b>Отчет:</b>\n' + '<pre>' + msg.text + '</pre>';
+                        }else if(isAboutMe){
+                            msg.text = '<b>Пользователь обновил данные о себе:</b>\n' + '<pre>' + msg.text + '</pre>';
                         }
                         for (var temp in team) {
                             if ((temp !== 'isNotFull') && (+temp !== +chatId)) {
