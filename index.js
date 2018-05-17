@@ -54,6 +54,15 @@ bot.onText(/\/sendGroups/, msg => {
     })
 })
 
+bot.onText(/\/sendMeGroup/, (msg) => {
+    //console.log(arr[1])
+    try {
+        bot.sendMessage(msg.chat.id, frases.team_ask(msg.chat.first_name), keyboards.team_ready);
+    } catch (e) {
+        bot.sendMessage(msg.chat.id, e)
+    }
+})
+
 bot.onText(/\/test/, msg => {
     // console.log(helpers.convert_date(new Date()))
     //
@@ -157,12 +166,6 @@ schedule.scheduleJob(rule, function () {
     })
 });
 
-// bot.onText(/\/next/, msg => {
-//     // var s = new Date().getTime()
-//
-//     // console.log((new Date().getTime() - s) / 1000 + ' ns')
-// })
-
 bot.on('message', function (msg) {
     var chatId = msg.chat.id;
     if (msg.text === kb.home.report) {
@@ -221,18 +224,6 @@ bot.on('callback_query', query => {
             if (!error && !user.team) {
                 database.getData('groups/', function (groups) {
                     if (!error) {
-                        // var key = {
-                        //     parse_mode: 'HTML',
-                        //     reply_markup: {
-                        //         keyboard: [
-                        //             [kb.home.about_me],
-                        //             [kb.home.report],
-                        //             [kb.home.rules]
-                        //         ]
-                        //
-                        //     }
-                        // };
-
                         var isJoin = false;
                         database.getData('archive/', archive => {
                             for (var temp in groups) {
@@ -258,35 +249,31 @@ bot.on('callback_query', query => {
                                     }
                                     for (var grout_user in groups[temp]) {
                                         if (grout_user !== 'isNotFull') {
-                                            // if(grout_user === chat.id){
-                                            //     bot.sendMessage(grout_user, grout_users, key)
-                                            // }else{
                                             bot.sendMessage(grout_user, grout_users, keyboards.home_HTML)
-                                            // }
                                         }
                                     }
 
                                     break;
                                 }
                             }
-                        })
 
-
-                        if (!isJoin) {
-                            delete chat.type;
-                            var uploadData = {
-                                isNotFull: true,
+                            if (!isJoin) {
+                                delete chat.type;
+                                var uploadData = {
+                                    isNotFull: true,
+                                }
+                                uploadData[chat.id] = chat;
+                                database.pushData('groups/', uploadData).then(groupId => {
+                                    database.updateData('users/' + chat.id, {team: groupId[1]})
+                                })
+                                bot.sendMessage(chat.id, '<b>Список участников группы:</b>\n' + frases.user_link(chat.id, chat.first_name), keyboards.home_HTML)
                             }
-                            uploadData[chat.id] = chat;
-                            database.pushData('groups/', uploadData).then(groupId => {
-                                database.updateData('users/' + chat.id, {team: groupId[1]})
+                            bot.editMessageText(frases.team_success, {
+                                chat_id: chat.id,
+                                message_id: message_id
                             })
-                            bot.sendMessage(chat.id, '<b>Список участников группы:</b>\n' + frases.user_link(chat.id, chat.first_name), keyboards.home_HTML)
-                        }
-                        bot.editMessageText(frases.team_success, {
-                            chat_id: chat.id,
-                            message_id: message_id
                         })
+
                     }
                 })
             } else {
