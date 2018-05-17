@@ -1,5 +1,5 @@
 const TelegramBot = require('node-telegram-bot-api');
-const token = '567329102:AAGnlg2pk3QrOyb9Gd5HLY2KDtO2h6V5wPU';
+const token = /*'459914749:AAE38mka1v9hyxYk1l2aihXBN05lRlM0Oi8'*/'567329102:AAGnlg2pk3QrOyb9Gd5HLY2KDtO2h6V5wPU';
 const bot = new TelegramBot(token, {polling: true});
 const helpers = require('./helpers');
 const keyboards = require('./keyboard');
@@ -32,14 +32,26 @@ bot.onText(/\/start/, (msg) => {
                 })
 
             });
-        }else{
-            bot.sendMessage(msg.chat.id,'Вы исключены из марафона')
+        } else {
+            bot.sendMessage(msg.chat.id, 'Вы исключены из марафона')
         }
     })
 });
 
 bot.onText(/\/help/, msg => {
     bot.sendMessage(msg.chat.id, frases.rules, keyboards.home)
+})
+
+bot.onText(/\/sendGroups/, msg => {
+    database.getData('users/', function (users, error) {
+        if (!error) {
+            for (var temp in users) {
+                if (!users[temp].team) {
+                    bot.sendMessage(temp, frases.team_ask(users[temp].first_name), keyboards.team_ready);
+                }
+            }
+        }
+    })
 })
 
 bot.onText(/\/test/, msg => {
@@ -78,7 +90,8 @@ const rule = new schedule.RecurrenceRule();
 rule.hour = 8;
 rule.minute = 1;
 
-schedule.scheduleJob(rule, function(){
+schedule.scheduleJob(rule, function () {
+// bot.onText(/\/next/, msg => {
     database.getData('/', function (data, error) {
         if (!error) {
             for (var temp in data.users) {
@@ -144,11 +157,11 @@ schedule.scheduleJob(rule, function(){
     })
 });
 
-bot.onText(/\/next/, msg => {
-    // var s = new Date().getTime()
-
-    // console.log((new Date().getTime() - s) / 1000 + ' ns')
-})
+// bot.onText(/\/next/, msg => {
+//     // var s = new Date().getTime()
+//
+//     // console.log((new Date().getTime() - s) / 1000 + ' ns')
+// })
 
 bot.on('message', function (msg) {
     var chatId = msg.chat.id;
@@ -202,7 +215,7 @@ bot.on('message', function (msg) {
 
 bot.on('callback_query', query => {
     const {chat, message_id, text} = query.message;
-    console.log(query.data);
+    // console.log(query.data);
     if (query.data === 'team_ready_yes') {
         database.getData('users/' + chat.id, function (user, error) {
             if (!error && !user.team) {
@@ -237,7 +250,7 @@ bot.on('callback_query', query => {
 
                                     for (var grout_user in groups[temp]) {
                                         if (grout_user !== 'isNotFull') {
-                                            var team_salute = (archive[grout_user].team_salute === '') ? 'Нет данных :c' : archive[grout_user].team_salute;
+                                            var team_salute = (archive[grout_user].team_salute === '' || archive[grout_user].team_salute === undefined) ? 'Нет данных :c' : archive[grout_user].team_salute;
                                             grout_users += `\n${count_grout_users}. ` + frases.user_link(grout_user, groups[temp][grout_user].first_name) +
                                                 ':\n' + team_salute + '\n';
                                             count_grout_users++
