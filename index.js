@@ -96,7 +96,7 @@ bot.onText(/\/test/, msg => {
 })
 
 const rule = new schedule.RecurrenceRule();
-rule.hour = 8;
+rule.hour = 5;
 rule.minute = 1;
 
 schedule.scheduleJob(rule, function () {
