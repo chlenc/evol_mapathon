@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "firebase": "^5.0.2",
+    "memory-cache": "^0.2.0",
     "node-schedule": "^1.3.0",
     "node-telegram-bot-api": "^0.30.0",
     "node-telegram-cache-chat-messages": "^1.3.0"

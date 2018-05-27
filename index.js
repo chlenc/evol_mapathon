@@ -7,13 +7,14 @@ const kb = require('./keyboard-buttons');
 const frases = require('./frases');
 const database = require('./database');
 var schedule = require('node-schedule');
-const TelegramCacheChatMessages = require('node-telegram-cache-chat-messages');
+//const TelegramCacheChatMessages = require('node-telegram-cache-chat-messages');
+var cache = require('memory-cache');
 
-const casheMessages = new TelegramCacheChatMessages({
-    bot,
-    all: true,
-    edited: true
-});
+// const casheMessages = new TelegramCacheChatMessages({
+//     bot,
+//     all: true,
+//     edited: true
+// });
 
 bot.onText(/\/start/, (msg) => {
     database.getData('users/' + msg.chat.id, function (data, error) {
@@ -43,11 +44,14 @@ bot.onText(/\/help/, msg => {
 })
 
 bot.onText(/\/sendGroups/, msg => {
+
+    var text = 'Добрый вечер, друзья! Из-за сложной структуры бота возникали ошибки. Мы все отладили, только вам необходимо вернуться на шаг назад и пройти снова деление на группы. Благодарим вас за терпение, в конце марафона с нас бонус специально для вас, первопроходцев!)'
+
     database.getData('users/', function (users, error) {
         if (!error) {
             for (var temp in users) {
                 if (!users[temp].team) {
-                    bot.sendMessage(temp, frases.team_ask(users[temp].first_name), keyboards.team_ready);
+                    bot.sendMessage(temp, text, keyboards.team_ready);
                 }
             }
         }
@@ -55,7 +59,6 @@ bot.onText(/\/sendGroups/, msg => {
 })
 
 bot.onText(/\/sendMeGroup/, (msg) => {
-    //console.log(arr[1])
     try {
         bot.sendMessage(msg.chat.id, frases.team_ask(msg.chat.first_name), keyboards.team_ready);
     } catch (e) {
@@ -118,7 +121,6 @@ schedule.scheduleJob(rule, function () {
                         if (data.users[temp].rebuke) {
                             bot.sendMessage(temp, frases.excluded(data.users[temp].first_name));
                             try {
-                                //delete data.users[temp].rebuke;
                                 if (data.users[temp].team !== undefined && data.users[temp].team !== null) {
                                     delete data.groups[data.users[temp].team][temp];
                                     delete data.users[temp].team;
@@ -166,12 +168,25 @@ schedule.scheduleJob(rule, function () {
     })
 });
 
+
 bot.on('message', function (msg) {
     var chatId = msg.chat.id;
     if (msg.text === kb.home.report) {
-        bot.sendMessage(chatId, frases.report, keyboards.cancel_report)
+        cache.put(chatId, 'report');
+        database.getData('users/' + chatId, function (user, error) {
+            if (!error) {
+                var state = user.state;
+                state = helpers.getState(user.start_date, state);
+                if (state === 'week1' || state === 'week2' || state === 'week3') {
+                    bot.sendMessage(chatId, frases['report_' + state], keyboards.cancel_report)
+                } else {
+                    bot.sendMessage(chatId, frases.report_week1, keyboards.cancel_report)
+                }
+            }
+        })
     }
     else if (msg.text === kb.home.about_me) {
+        cache.put(chatId, 'about_me');
         bot.sendMessage(chatId, frases.about_me, keyboards.cancel_report)
     }
     else if (msg.text === kb.home.rules) {
@@ -181,19 +196,20 @@ bot.on('message', function (msg) {
         bot.sendMessage(chatId, 'Отменено', keyboards.home)
     }
     else {
-        var messages = casheMessages.messages(chatId);
-        var lastMessage = messages[messages.length - 2];
+        var lastMessage = cache.get(chatId);
         var isReport = false;
         var isAboutMe = false;
-        if (lastMessage !== undefined && lastMessage.text === kb.home.report && msg.text !== 'Отменить ❌') {
+        if (lastMessage !== undefined && lastMessage !== null && lastMessage === 'report' && msg.text !== 'Отменить ❌') {
             database.updateData('users/' + chatId, {report: msg.text});
             bot.sendMessage(chatId, frases.success_report, keyboards.home);
             isReport = true;
+            cache.del(chatId)
         }
-        if (lastMessage !== undefined && lastMessage.text === kb.home.about_me && msg.text !== 'Отменить ❌') {
+        if (lastMessage !== undefined && lastMessage !== null && lastMessage === 'about_me' && msg.text !== 'Отменить ❌') {
             database.updateData('archive/' + chatId, {team_salute: msg.text});
             bot.sendMessage(chatId, frases.success_about_me, keyboards.home);
             isAboutMe = true;
+            cache.del(chatId);
         }
         if (msg.text.slice(0, 1) !== '/') {
             database.getData('users/' + chatId, function (user, error) {
@@ -201,7 +217,7 @@ bot.on('message', function (msg) {
                     database.getData('groups/' + user.team, team => {
                         if (isReport) {
                             msg.text = '<b>Отчет:</b>\n' + '<pre>' + msg.text + '</pre>';
-                        }else if(isAboutMe){
+                        } else if (isAboutMe) {
                             msg.text = '<b>Пользователь обновил данные о себе:</b>\n' + '<pre>' + msg.text + '</pre>';
                         }
                         for (var temp in team) {
