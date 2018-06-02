@@ -6,10 +6,11 @@ const keyboards = require('./keyboard');
 const kb = require('./keyboard-buttons');
 const frases = require('./frases');
 const database = require('./database');
-var schedule = require('node-schedule');
+const schedule = require('node-schedule');
 //const TelegramCacheChatMessages = require('node-telegram-cache-chat-messages');
-var cache = require('memory-cache');
-
+const cache = require('memory-cache');
+const adminTeam = -303753196;
+const mainAdmins = [280914417];
 // const casheMessages = new TelegramCacheChatMessages({
 //     bot,
 //     all: true,
@@ -44,18 +45,34 @@ bot.onText(/\/help/, msg => {
 })
 
 bot.onText(/\/sendGroups/, msg => {
+    if (msg.chat.id === adminTeam || mainAdmins.indexOf(msg.chat.id) !== -1) {
+        var text = 'Добрый вечер, друзья! Из-за сложной структуры бота возникали ошибки. Мы все отладили, только вам необходимо вернуться на шаг назад и пройти снова деление на группы. Благодарим вас за терпение, в конце марафона с нас бонус специально для вас, первопроходцев!)'
 
-    var text = 'Добрый вечер, друзья! Из-за сложной структуры бота возникали ошибки. Мы все отладили, только вам необходимо вернуться на шаг назад и пройти снова деление на группы. Благодарим вас за терпение, в конце марафона с нас бонус специально для вас, первопроходцев!)'
-
-    database.getData('users/', function (users, error) {
-        if (!error) {
-            for (var temp in users) {
-                if (!users[temp].team) {
-                    bot.sendMessage(temp, text, keyboards.team_ready);
+        database.getData('users/', function (users, error) {
+            if (!error) {
+                for (var temp in users) {
+                    if (!users[temp].team) {
+                        bot.sendMessage(temp, text, keyboards.team_ready);
+                    }
                 }
             }
-        }
-    })
+        })
+        bot.sendMessage(msg.chat.id, 'Готово ✅')
+    }
+})
+
+bot.onText(/\/sendText (.+)/, (msg, array) => {
+    if (msg.chat.id === adminTeam || mainAdmins.indexOf(msg.chat.id) !== -1) {
+        var text = array[1];
+        database.getData('users/', function (users, error) {
+            if (!error) {
+                for (var temp in users) {
+                    bot.sendMessage(temp, text);
+                }
+            }
+        })
+        bot.sendMessage(msg.chat.id, 'Готово ✅')
+    }
 })
 
 bot.onText(/\/sendMeGroup/, (msg) => {
@@ -66,37 +83,201 @@ bot.onText(/\/sendMeGroup/, (msg) => {
     }
 })
 
-bot.onText(/\/test/, msg => {
-    // console.log(helpers.convert_date(new Date()))
-    //
-    // console.log(helpers.getState('2018-05-15'))
-    //
-    // database.getData('users',users=>{
-    //     for(var temp in users){
-    //         database.setData('archive/'+temp,{
-    //             'start':'',
-    //             'week1':'',
-    //             'week2':'',
-    //             'week3':'',
-    //             'week4':'',
-    //             'team_salute':''
-    //         });
-    //     }
-    // })
-
-
-    // database.getData('archive/' + msg.chat.id + '/team_salute',data=>{
-    //     bot.sendMessage(msg.chat.id,data)
-    // });
-
-
-    // bot.sendMessage(msg.chat.id, 'Напишите /start чтобы начать заново',{
-    //     reply_markup:{
-    //         remove_keyboard:true
-    //     }
-    // })
-
+bot.onText(/\/removeRebukes/, (msg) => {
+    if (msg.chat.id === adminTeam || mainAdmins.indexOf(msg.chat.id) !== -1) {
+        database.getData('users/', function (users, error) {
+            if (!error) {
+                for (var temp in users) {
+                    if (users[temp].rebuke) {
+                        database.removeData('users/' + temp + '/rebuke')
+                    }
+                }
+            }
+        });
+        bot.sendMessage(msg.chat.id, 'Готово ✅')
+    }
 })
+
+bot.onText(/\/enableAll/, (msg) => {
+    if (msg.chat.id === adminTeam || mainAdmins.indexOf(msg.chat.id) !== -1) {
+        database.getData('users/', function (users, error) {
+            if (!error) {
+                for (var temp in users) {
+                    if (users[temp].state === "disabled") {
+                        var state = helpers.getState(users[temp].start_date);
+                        database.updateData('users/' + temp, {state: state})
+                    }
+                }
+            }
+        });
+        bot.sendMessage(msg.chat.id, 'Готово ✅')
+    }
+})
+
+bot.onText(/\/removeRebuke (.+)/, (msg, array) => { //error
+    if (msg.chat.id === adminTeam || mainAdmins.indexOf(msg.chat.id) !== -1) {
+        var id = array[1];
+        database.getData('users/' + id, function (user, error) {
+            if (!error) {
+                if (user.rebuke) {
+                    database.removeData('users/' + id + '/rebuke');
+                    bot.sendMessage(msg.chat.id, 'Готово ✅');
+                } else {
+                    bot.sendMessage(msg.chat.id, 'У пользователя нет замечания');
+                }
+            } else {
+                bot.sendMessage(msg.chat.id, 'Пользователь не найден');
+            }
+        });
+
+    }
+})
+
+bot.onText(/\/enable (.+)/, (msg, array) => {
+    if (msg.chat.id === adminTeam || mainAdmins.indexOf(msg.chat.id) !== -1) {
+
+        var id = array[1];
+        database.getData('users/' + id, function (user, error) {
+            if (!error) {
+                if (user.state === "disabled") {
+                    var state = helpers.getState(user.start_date);
+                    database.updateData('users/' + id, {state: state})
+                    bot.sendMessage(msg.chat.id, 'Готово ✅');
+                } else {
+                    bot.sendMessage(msg.chat.id, 'У пользователя нет блокировки');
+                }
+            } else {
+                bot.sendMessage(msg.chat.id, 'Пользователь не найден');
+            }
+        });
+    }
+})
+
+bot.onText(/\/status/, (msg) => {
+    if (msg.chat.id === adminTeam || mainAdmins.indexOf(msg.chat.id) !== -1) {
+        database.getData('users/', function (users, error) {
+            if (!error) {
+                var rebuks = 0;
+                var disableds = 0;
+                var rebuksList = [];
+                var disabledsList = [];
+                for (var temp in users) {
+                    if (users[temp].state === "disabled") {
+                        disableds++;
+                        disabledsList.push(users[temp].first_name + '(' + temp + ')')
+                    }
+                    if (users[temp].rebuke) {
+                        rebuks++;
+                        rebuksList.push(users[temp].first_name + '(' + temp + ')')
+                    }
+                }
+                bot.sendMessage(msg.chat.id, `Замечаний: ${rebuks};\nБлокировок: ${disableds};\n\nЗамечания: ${rebuksList.join(' ,')}` +
+                    '\n\nБлокировки: ' + disabledsList.join(' ,'))
+            }
+        });
+    }
+})
+
+bot.onText(/\/commands/, (msg) => {
+    if (msg.chat.id === adminTeam || mainAdmins.indexOf(msg.chat.id) !== -1) {
+        bot.sendMessage(msg.chat.id, frases.commands)
+    }
+})
+
+bot.onText(/\/getMyId/, (msg) => {
+    bot.sendMessage(msg.chat.id, msg.chat.id)
+})
+
+bot.onText(/\/getGroupsList/, (msg) => {
+
+    if (msg.chat.id === adminTeam || mainAdmins.indexOf(msg.chat.id) !== -1) {
+        var feedback = 'Список групп:\n'
+        database.getData('groups/', function (groups, error) {
+            if (!error) {
+                for (var temp in groups) {
+                    feedback += temp + '\n';
+                    for (var user in groups[temp]) {
+                        if (user !== 'isNotFull') {
+                            feedback += frases.user_link(user, groups[temp][user].first_name) +'('+user+')' + '\n';
+                        }
+                    }
+                    feedback += (groups[temp].isNotFull) ? 'Группа открыта для новых участников 🔐' : 'Группа закрыта для новых участников 🔒';
+                    feedback += '\n\n'
+                }
+                bot.sendMessage(msg.chat.id, feedback, {
+                    parse_mode: "HTML"
+                })
+            }
+        });
+    }
+})
+
+bot.onText(/\/openGroup (.+)/, (msg, array) => {
+
+    if (msg.chat.id === adminTeam || mainAdmins.indexOf(msg.chat.id) !== -1) {
+        var id = array[1];
+        database.getData('groups/' + id, function (data, error) {
+            if (!error) {
+                if (!data.isNotFull) {
+                    database.updateData('groups/' + id, {isNotFull: true});
+                    bot.sendMessage(msg.chat.id, 'Готово ✅')
+                } else {
+                    bot.sendMessage(msg.chat.id, 'Группа уже открыта')
+                }
+            } else {
+                bot.sendMessage(msg.chat.id, 'Группа не найдена')
+            }
+        })
+
+    }
+})
+
+bot.onText(/\/closeGroup (.+)/, (msg, array) => {
+
+    if (msg.chat.id === adminTeam || mainAdmins.indexOf(msg.chat.id) !== -1) {
+        var id = array[1];
+        database.getData('groups/' + id, function (data, error) {
+            if (!error) {
+                if (data.isNotFull) {
+                    database.updateData('groups/' + id, {isNotFull: false});
+                    bot.sendMessage(msg.chat.id, 'Готово ✅')
+                } else {
+                    bot.sendMessage(msg.chat.id, 'Группа уже закрыта')
+                }
+            } else {
+                bot.sendMessage(msg.chat.id, 'Группа не найдена')
+            }
+        })
+
+    }
+})
+
+bot.onText(/\/kickGroupUser (.+)/, (msg, array) => {
+
+    if (msg.chat.id === adminTeam || mainAdmins.indexOf(msg.chat.id) !== -1) {
+        var id = array[1];
+        database.getData('users/' + id, function (user, error) {
+            if (!error) {
+                if (user.team) {
+                    try {
+                        database.removeData('groups/' + user.team + '/' + id);
+                        database.removeData('users/' + id + '/team');
+                        bot.sendMessage(msg.chat.id, 'Готово ✅')
+                    } catch (e) {
+                        bot.sendMessage(msg.chat.id, 'Произошла ошибка')
+                    }
+
+                } else {
+                    bot.sendMessage(msg.chat.id, 'У пользователя нет группы')
+                }
+            } else {
+                bot.sendMessage(msg.chat.id, 'Пользователь не найден')
+            }
+        })
+
+    }
+})
+
 
 const rule = new schedule.RecurrenceRule();
 rule.hour = 5;
@@ -168,7 +349,6 @@ schedule.scheduleJob(rule, function () {
     })
 });
 
-
 bot.on('message', function (msg) {
     var chatId = msg.chat.id;
     if (msg.text === kb.home.report) {
@@ -177,6 +357,7 @@ bot.on('message', function (msg) {
             if (!error) {
                 var state = user.state;
                 state = helpers.getState(user.start_date, state);
+                console.log(state)
                 if (state === 'week1' || state === 'week2' || state === 'week3') {
                     bot.sendMessage(chatId, frases['report_' + state], keyboards.cancel_report)
                 } else {
@@ -233,7 +414,6 @@ bot.on('message', function (msg) {
 
     }
 })
-
 
 bot.on('callback_query', query => {
     const {chat, message_id, text} = query.message;

@@ -9,7 +9,7 @@ firebase.initializeApp({
 module.exports = {
     getData(path,callback){
         return firebase.database().ref(path).once('value',function (snapshot) {
-           var data = snapshot.val();
+           var data = snapshot.val()
            if(data == null){
                callback({},true)
            }else {
@@ -30,7 +30,7 @@ module.exports = {
         firebase.database().ref(path).update(data)
     },
     removeData(path){
-        firebase.database().ref(path).remove(data)
+        firebase.database().ref(path).remove()
     }
     // getAllData(){
     //
