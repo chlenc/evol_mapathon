@@ -164,15 +164,15 @@ bot.onText(/\/status/, (msg) => {
                 for (var temp in users) {
                     if (users[temp].state === "disabled") {
                         disableds++;
-                        disabledsList.push(frases.user_link(temp,users[temp].first_name) + '(' + temp + ')')
+                        disabledsList.push(frases.user_link(temp,users[temp].first_name) + ' (' + temp + ')')
                     }
                     if (users[temp].rebuke) {
                         rebuks++;
-                        rebuksList.push(frases.user_link(temp,users[temp].first_name) + '(' + temp + ')')
+                        rebuksList.push(frases.user_link(temp,users[temp].first_name) + ' (' + temp + ')')
                     }
                 }
-                bot.sendMessage(msg.chat.id, `Замечаний: ${rebuks};\nБлокировок: ${disableds};\n\nЗамечания: ${rebuksList.join(' ,')}` +
-                    '\n\nБлокировки: ' + disabledsList.join(' ,'),{parse_mode:"HTML"})
+                bot.sendMessage(msg.chat.id, `Замечаний: ${rebuks};\nБлокировок: ${disableds};\n\nЗамечания: ${rebuksList.join(', ')}` +
+                    '\n\nБлокировки: ' + disabledsList.join(', '),{parse_mode:"HTML"})
             }
         });
     }
@@ -198,7 +198,7 @@ bot.onText(/\/getGroupsList/, (msg) => {
                     feedback += temp + '\n';
                     for (var user in groups[temp]) {
                         if (user !== 'isNotFull') {
-                            feedback += frases.user_link(user, groups[temp][user].first_name) +'('+user+')' + '\n';
+                            feedback += frases.user_link(user, groups[temp][user].first_name) +' ('+user+')' + '\n';
                         }
                     }
                     feedback += (groups[temp].isNotFull) ? 'Группа открыта для новых участников 🔐' : 'Группа закрыта для новых участников 🔒';
